@@ -1,0 +1,135 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jan 07 11:28:45 2018
+
+@author: Carlos Paradela, Diego de Aguilar, Kinan Halloum
+"""
+
+import requests
+from Tkinter import *
+import time
+
+
+#def startSearch(query):
+ #   print query.get()
+
+def main():
+    window = Tk()
+    window.geometry("800x600+0+0")
+    window.title("National Geographic Search Assistant")
+    lblText= Label(text="Please, insert your query:", 
+                   font=("Agency FB",14)).place(x = 10, y = 10)
+    lblExample= Label(text="Example: fur, four legged, carnivorous, fox...", 
+                      font=("Agency FB",11)).place(x = 10, y = 40)
+    #Creates a text box
+    
+    inputQuery = StringVar()
+    lblQuery = Entry(window, textvariable = inputQuery).place(x = 200, y = 20)
+    
+    #Creates a button
+    btnQuery = Button(window, text = "Search", font = ("Agency FB",14), width = 7, 
+                      command = lambda: startSearch(inputQuery, window)).place(x = 330, y = 15)
+    #Adds event to the button
+    
+    window.mainloop()
+
+def startSearch(inputQuery, window):
+    
+    
+    userQuery = inputQuery.get()
+    #print type(userQueryTmp)
+    #userQuery = str(userQueryTmp)
+    #Sets input to lower case and replaces spaces with an underscore
+    userQuery = userQuery.lower()
+    userQuery = userQuery.replace(' ', '_')
+    userQuery = userQuery.replace('-', '_')
+    print "The query is " + userQuery
+    #Expand is set to true if a term related to the term is related to
+    #the animalKingdomList
+    expandedTerm = []
+  #  userQuery = raw_input("Welcome to the National Geographic search assistant\
+ #powered by ConceptNet.\nPlease enter your query:\n")
+ 
+   # lsbPrintInfo = Label(window, text = "Searching for " + userQuery + " ,please wait.",\
+    #               font = ("Agency FB",14)).place(x = 10, y = 40)
+    time.sleep(1)
+    expandedTerm = doRequestAndFindAnimals(userQuery)
+
+    
+    if len(expandedTerm) == 0:
+        print "No relations found. Expansion started. Please have a cup of coffee"
+        #If the query isnt an actual group of animals it tries to look for the
+        #'things with' relation > RelatedTo
+        animalsWith = []
+        obj = requests.get('http://api.conceptnet.io/c/en/' + userQuery + 
+                           "?offset=0&limit=1000").json()
+        for j in range(0,len(obj['edges'])):
+          if obj['edges'][j]['rel']['label'] == 'RelatedTo':
+              animalsWith.append(obj['edges'][j]['start']['label'])
+              #print userQuery, j, "is a type of :", obj['edges'][j]['start']['label']
+        print len(animalsWith)
+        #print animalsWith
+        for i in range(0,len(animalsWith)):
+            if i != userQuery:
+                #print "Quering:", animalsWith[i]
+                tmpList = doRequestAndFindAnimals(animalsWith[i])
+                expandedTerm.extend(tmpList)
+            #For each of the related to 'fur' words
+            #Check if they are related to animal
+            ###############
+
+            #############
+             
+            
+        print 'DONE WITH THE NO RELATIONS'
+    else: pass
+
+    lsbPrintInfo2 = Label(window, text = "Done. Do you want to display the \
+expanded results or open them using the National Geographic Database?",
+    font = ("Agency FB",14)).place(x = 10, y = 80)
+    
+    btnQuery = Button(window, text = "Show results", font = ("Agency FB",14), width = 15, 
+                      command = lambda: displayResults(window)).place(x = 330, y = 120)
+
+    print expandedTerm
+
+def doRequestAndFindAnimals(word):
+    animalKingdomList = ['mammal', 'animal']
+    expandedTermList = []
+    expand = False
+    obj = requests.get('http://api.conceptnet.io/c/en/' + word + "?offset=0&limit=1000").json()
+    #obj = requests.get('http://api.conceptnet.io/c/en/fox?rel=/r/IsA&limit=1000').json()
+    #print obj.keys()
+    #print "Len is ", len(obj['edges'])
+    #For each element in edge
+    #print obj['edges']
+    for i in range(0,len(obj['edges'])):
+        #If the relation is 'type of'> isA
+        #print obj['edges'][i]['end']['label'], "is in", obj['edges'][i]['rel']['@id']
+    
+        if obj['edges'][i]['rel']['@id'] == '/r/IsA':
+            #print obj['edges'][i]['end']['label'], " is in ", obj['edges'][i]['rel']['@id']
+            
+            #Checks if it contains a word from the animals words list
+           if obj['edges'][i]['end']['label'] in (animalKingdomList[:]):
+                #Then scapes the for loop and saves the list "types of"
+                #print userQuery, " is a type of : ", obj['edges'][i]['end']['label']
+                expand = True
+                break
+    
+    if expand == True:
+        for j in range(0,len(obj['edges'])):
+            #If the relation is 'type of'
+          if obj['edges'][j]['rel']['label'] == 'IsA' :
+            if obj['edges'][j]['start']['label'] != word:
+                #pass
+               #print word, j, "is a type of :", obj['edges'][j]['start']['label']
+               expandedTermList.append(obj['edges'][j]['start']['label'])
+               
+    return expandedTermList
+    
+    
+
+
+if __name__ == "__main__":
+    main()
